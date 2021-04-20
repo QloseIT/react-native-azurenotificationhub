@@ -15,6 +15,6 @@ Pod::Spec.new do |s|
   s.source       = { :git => "https://github.com/CatalystCode/react-native-azurenotificationhub.git", :tag => "master" }
   s.source_files  = "ios/**/*.{h,m}"
   s.requires_arc = true
-  s.ios.dependency 'WindowsAzureMessaging'
+  s.ios.dependency 'AzureNotificationHubs-iOS'
   s.dependency "React"
 end
