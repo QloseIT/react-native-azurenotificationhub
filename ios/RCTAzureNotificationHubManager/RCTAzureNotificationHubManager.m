@@ -422,30 +422,10 @@ RCT_EXPORT_METHOD(unregister:(nonnull RCTPromiseResolveBlock)resolve
         return;
     }
 
-    // Initialize hub
-    SBNotificationHub *hub = [RCTAzureNotificationHubUtil createAzureNotificationHub:_connectionString
-                                                                             hubName:_hubName];
-
-    // Unregister for native notifications
-    [RCTAzureNotificationHubUtil runOnMainThread:^
-    {
-        [hub unregisterNativeWithCompletion:^(NSError *error)
-        {
-            if (error != nil)
-            {
-                [[NSNotificationCenter defaultCenter] postNotificationName:RCTErrorUnspecified
-                                                                    object:notificationHandler
-                                                                  userInfo:@{RCTUserInfoError: error}];
-
-                reject(RCTErrorUnableToUnregister, [error localizedDescription], nil);
-            }
-            else
-            {
-                _connectionString = nil;
-                resolve(RCTPromiseResolveUnregiseredSuccessfully);
-            }
-        }];
-    }];
+    [MSNotificationHub clearTags];
+    _connectionString = nil;
+    _hubName = nil;
+    resolve(RCTPromiseResolveUnregiseredSuccessfully);
 }
 
 RCT_EXPORT_METHOD(unregisterTemplate:(nonnull NSString *)templateName
