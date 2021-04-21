@@ -69,32 +69,32 @@ RCT_EXPORT_MODULE()
 {
     // Initialize notification handler
     notificationHandler = [[RCTAzureNotificationHandler alloc] initWithEventEmitter:self];
-    
+
     [[NSNotificationCenter defaultCenter] addObserver:notificationHandler
                                              selector:@selector(localNotificationReceived:)
                                                  name:RCTLocalNotificationReceived
                                                object:nil];
-    
+
     [[NSNotificationCenter defaultCenter] addObserver:notificationHandler
                                              selector:@selector(remoteNotificationReceived:)
                                                  name:RCTRemoteNotificationReceived
                                                object:nil];
-    
+
     [[NSNotificationCenter defaultCenter] addObserver:notificationHandler
                                              selector:@selector(remoteNotificationRegistered:)
                                                  name:RCTRemoteNotificationRegistered
                                                object:nil];
-    
+
     [[NSNotificationCenter defaultCenter] addObserver:notificationHandler
                                              selector:@selector(remoteNotificationRegisteredError:)
                                                  name:RCTRemoteNotificationRegisteredError
                                                object:nil];
-    
+
     [[NSNotificationCenter defaultCenter] addObserver:notificationHandler
                                              selector:@selector(azureNotificationHubRegistered:)
                                                  name:RCTAzureNotificationHubRegistered
                                                object:nil];
-    
+
     [[NSNotificationCenter defaultCenter] addObserver:notificationHandler
                                              selector:@selector(azureNotificationHubRegisteredError:)
                                                  name:RCTAzureNotificationHubRegisteredError
@@ -128,7 +128,6 @@ RCT_EXPORT_MODULE()
 }
 
 + (void)didReceiveRemoteNotification:(nonnull NSDictionary *)userInfo
-              fetchCompletionHandler:(void (__unused ^_Nonnull)(UIBackgroundFetchResult result))completionHandler
 {
     [[NSNotificationCenter defaultCenter] postNotificationName:RCTRemoteNotificationReceived
                                                         object:notificationHandler
@@ -266,7 +265,7 @@ RCT_EXPORT_METHOD(cancelLocalNotifications:(NSDictionary<NSString *, id> *)userI
                 *stop = YES;
             }
         }];
-        
+
         if (matchesAll)
         {
             [[UIApplication sharedApplication] cancelLocalNotification:notification];
@@ -279,10 +278,10 @@ RCT_EXPORT_METHOD(getInitialNotification:(RCTPromiseResolveBlock)resolve
 {
     NSMutableDictionary<NSString *, id> *initialNotification =
     [self.bridge.launchOptions[UIApplicationLaunchOptionsRemoteNotificationKey] mutableCopy];
-    
+
     UILocalNotification *initialLocalNotification =
     self.bridge.launchOptions[UIApplicationLaunchOptionsLocalNotificationKey];
-    
+
     if (initialNotification)
     {
         initialNotification[RCTUserInfoRemote] = @YES;
@@ -306,11 +305,11 @@ RCT_EXPORT_METHOD(getScheduledLocalNotifications:(RCTResponseSenderBlock)callbac
     {
         [formattedScheduledLocalNotifications addObject:[RCTAzureNotificationHubUtil formatLocalNotification:notification]];
     }
-    
+
     callback(@[formattedScheduledLocalNotifications]);
 }
 
-RCT_EXPORT_METHOD(register:(nonnull NSString *)deviceToken
+RCT_EXPORT_METHOD(register:(nonnull NSData *)deviceToken
                     config:(nonnull NSDictionary *)config
                   resolver:(nonnull __unused RCTPromiseResolveBlock)resolve
                   rejecter:(nonnull RCTPromiseRejectBlock)reject)
@@ -334,33 +333,19 @@ RCT_EXPORT_METHOD(register:(nonnull NSString *)deviceToken
     }
 
     // Initialize hub
-    SBNotificationHub *hub = [RCTAzureNotificationHubUtil createAzureNotificationHub:_connectionString
-                                                                             hubName:_hubName];
+    [MSNotificationHub startWithConnectionString:_connectionString hubName:_hubName];
+    [MSNotificationHub addTags:_tags];
 
     // Register for native notifications
     [RCTAzureNotificationHubUtil runOnMainThread:^
     {
-        [hub registerNativeWithDeviceToken:deviceToken
-                                      tags:_tags
-                                completion:^(NSError* error)
-        {
-            if (error != nil)
-            {
-                [[NSNotificationCenter defaultCenter] postNotificationName:RCTAzureNotificationHubRegisteredError
-                                                                    object:notificationHandler
-                                                                  userInfo:@{RCTUserInfoError: error}];
-            }
-            else
-            {
-                [[NSNotificationCenter defaultCenter] postNotificationName:RCTAzureNotificationHubRegistered
-                                                                    object:notificationHandler
-                                                                  userInfo:@{RCTUserInfoSuccess: @YES}];
-            }
-        }];
+        [[NSNotificationCenter defaultCenter] postNotificationName:RCTAzureNotificationHubRegistered
+                                                            object:notificationHandler
+                                                          userInfo:@{RCTUserInfoSuccess: @YES}];
     }];
 }
 
-RCT_EXPORT_METHOD(registerTemplate:(nonnull NSString *)deviceToken
+RCT_EXPORT_METHOD(registerTemplate:(nonnull NSData *)deviceToken
                             config:(nonnull NSDictionary *)config
                           resolver:(nonnull __unused RCTPromiseResolveBlock)resolve
                           rejecter:(nonnull RCTPromiseRejectBlock)reject)

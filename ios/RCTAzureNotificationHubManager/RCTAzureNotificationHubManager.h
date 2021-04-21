@@ -22,8 +22,7 @@
 + (void)didFailToRegisterForRemoteNotificationsWithError:(nonnull NSError *)error;
 
 // Invoked from AppDelegate when a remote notification arrived and there is data to be fetched.
-+ (void)didReceiveRemoteNotification:(nonnull NSDictionary *)userInfo
-              fetchCompletionHandler:(void (__unused ^_Nonnull)(UIBackgroundFetchResult result))completionHandler;
++ (void)didReceiveRemoteNotification:(nonnull NSDictionary *)userInfo;
 
 // Invoked from AppDelegate when a notification arrived while the app was running in the foreground.
 + (void)userNotificationCenter:(nonnull __unused UNUserNotificationCenter *)center
