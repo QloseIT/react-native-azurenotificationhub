@@ -14,6 +14,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 
+import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -21,10 +22,19 @@ import android.util.Log;
 
 import static com.azure.reactnative.notificationhub.ReactNativeConstants.*;
 
+import java.util.Arrays;
+
 public final class ReactNativeNotificationsHandler {
     public static final String TAG = "ReactNativeNotification";
 
     private static final long DEFAULT_VIBRATION = 300L;
+
+    private static final String[] YesNoNotifications = new String[] {
+            "MedicationReminder"
+    };
+
+    private static final String NotificationReceiverClass = "com.membercare.patient.notifications.NotificationsBroadcastReceiver";
+
 
     /**
      * Used for both "notification" and "data" payload types in order to notify a running ReactJS app.
@@ -77,6 +87,7 @@ public final class ReactNativeNotificationsHandler {
                                         final Bundle bundle,
                                         final String notificationChannelID) {
         ReactNativeUtil.runInWorkerThread(new Runnable() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
             public void run() {
                 try {
                     Class intentClass = ReactNativeUtil.getMainActivityClass(context);
@@ -106,6 +117,8 @@ public final class ReactNativeNotificationsHandler {
 
                     int priority = ReactNativeUtil.getNotificationCompatPriority(
                             bundle.getString(KEY_REMOTE_NOTIFICATION_PRIORITY));
+                    String clickAction = bundle.getString(KEY_REMOTE_NOTIFICATION_CLICK_ACTION);
+
                     NotificationCompat.Builder notificationBuilder = ReactNativeUtil.initNotificationCompatBuilder(
                             context,
                             notificationChannelID,
@@ -114,6 +127,26 @@ public final class ReactNativeNotificationsHandler {
                             NotificationCompat.VISIBILITY_PRIVATE,
                             priority,
                             bundle.getBoolean(KEY_REMOTE_NOTIFICATION_AUTO_CANCEL, true));
+
+                    // Create notification intent
+                    Class notificationReceiverClass = Class.forName(NotificationReceiverClass);
+                    int notificationID = bundle.getString(KEY_REMOTE_NOTIFICATION_ID).hashCode();
+                    Bundle yesBundle = bundle.deepCopy();
+                    yesBundle.putBoolean(KEY_REMOTE_NOTIFICATION_YES_NO_ANSWER, true);
+                    Bundle noBundle = bundle.deepCopy();
+                    noBundle.putBoolean(KEY_REMOTE_NOTIFICATION_YES_NO_ANSWER, false);
+                    Intent yesIntent = ReactNativeUtil.createNotificationIntent(context, yesBundle, notificationReceiverClass);
+                    Intent noIntent = ReactNativeUtil.createNotificationIntent(context, noBundle, notificationReceiverClass);
+                    PendingIntent yesPendingIntent = PendingIntent.getBroadcast(context, 1000, yesIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT);
+                    PendingIntent noPendingIntent = PendingIntent.getBroadcast(context, 2000, noIntent,
+                            PendingIntent.FLAG_UPDATE_CURRENT);
+
+                    if (Arrays.asList(YesNoNotifications).contains(clickAction) && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+                        notificationBuilder
+                                .addAction(new NotificationCompat.Action(android.R.drawable.star_on, "Yes", yesPendingIntent))
+                                .addAction(new NotificationCompat.Action(android.R.drawable.star_off, "No", noPendingIntent));
+                    }
 
                     String group = bundle.getString(KEY_REMOTE_NOTIFICATION_GROUP);
                     if (group != null) {
@@ -141,7 +174,7 @@ public final class ReactNativeNotificationsHandler {
                         Bitmap largeIconBitmap = BitmapFactory.decodeResource(res, largeIconResId);
                         if (largeIconResId != 0 && (
                                 largeIcon != null ||
-                                Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)) {
+                                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)) {
                             notificationBuilder.setLargeIcon(largeIconBitmap);
                         }
                     } else {
@@ -179,7 +212,6 @@ public final class ReactNativeNotificationsHandler {
                         }
                     }
 
-                    int notificationID = bundle.getString(KEY_REMOTE_NOTIFICATION_ID).hashCode();
                     PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationID, intent,
                             PendingIntent.FLAG_UPDATE_CURRENT);
                     notificationBuilder.setContentIntent(pendingIntent);
