@@ -29,8 +29,6 @@ dependencies {
 }
 
 repositories {
-    maven {
-        url "http://dl.bintray.com/microsoftazuremobile/SDK"
-    }
+    maven5(http://dl.bintray.com/microsoftazuremobile/SDK)
 }
 
