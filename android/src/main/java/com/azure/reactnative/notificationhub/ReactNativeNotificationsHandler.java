@@ -211,9 +211,11 @@ public final class ReactNativeNotificationsHandler {
                             notificationBuilder.setColor(Color.parseColor(color));
                         }
                     }
+                    
+                    final int flag =  Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT;
 
                     PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationID, intent,
-                            PendingIntent.FLAG_UPDATE_CURRENT);
+                            flag);
                     notificationBuilder.setContentIntent(pendingIntent);
 
                     if (!bundle.containsKey(KEY_REMOTE_NOTIFICATION_VIBRATE) || bundle.getBoolean(KEY_REMOTE_NOTIFICATION_VIBRATE)) {
