@@ -47,60 +47,68 @@ public class ReactNativeRegistrationIntentService extends JobIntentService {
             return;
         }
 
-        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+        Thread thread = new Thread(() -> {
             try {
-                String regID = notificationHubUtil.getRegistrationID(ReactNativeRegistrationIntentService.this);
-                String token = task.getResult();
-                Log.d(TAG, "FCM Registration Token: " + token);
+                FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                    try {
+                        String regID = notificationHubUtil.getRegistrationID(ReactNativeRegistrationIntentService.this);
+                        String token = task.getResult();
+                        Log.d(TAG, "FCM Registration Token: " + token);
 
-                // Storing the registration ID indicates whether the generated token has been
-                // sent to your server. If it is not stored, send the token to your server.
-                // Also check if the token has been compromised and needs refreshing.
-                if (regID == null || storedToken != token) {
-                    NotificationHub hub = ReactNativeUtil.createNotificationHub(hubName, connectionString,
-                            ReactNativeRegistrationIntentService.this);
-                    Log.d(TAG, "NH Registration refreshing with token : " + token);
+                        // Storing the registration ID indicates whether the generated token has been
+                        // sent to your server. If it is not stored, send the token to your server.
+                        // Also check if the token has been compromised and needs refreshing.
+                        if (regID == null || storedToken != token) {
+                            NotificationHub hub = ReactNativeUtil.createNotificationHub(hubName, connectionString,
+                                    ReactNativeRegistrationIntentService.this);
+                            Log.d(TAG, "NH Registration refreshing with token : " + token);
 
-                    if (isTemplated) {
-                        regID = hub.registerTemplate(
-                                token, templateName, template, tags).getRegistrationId();
-                    } else {
-                        regID = hub.register(token, tags).getRegistrationId();
+                            if (isTemplated) {
+                                regID = hub.registerTemplate(
+                                        token, templateName, template, tags).getRegistrationId();
+                            } else {
+                                regID = hub.register(token, tags).getRegistrationId();
+                            }
+
+                            Log.d(TAG, "New NH Registration Successfully - RegId : " + regID);
+
+                            notificationHubUtil.setRegistrationID(ReactNativeRegistrationIntentService.this, regID);
+                            notificationHubUtil.setFCMToken(ReactNativeRegistrationIntentService.this, token);
+
+                            event.putExtra(
+                                    ReactNativeConstants.KEY_INTENT_EVENT_NAME,
+                                    ReactNativeConstants.EVENT_AZURE_NOTIFICATION_HUB_REGISTERED);
+                            event.putExtra(
+                                    ReactNativeConstants.KEY_INTENT_EVENT_TYPE,
+                                    ReactNativeConstants.INTENT_EVENT_TYPE_STRING);
+                            event.putExtra(
+                                    ReactNativeConstants.KEY_INTENT_EVENT_STRING_DATA, regID);
+                            ReactNativeNotificationsHandler.sendBroadcast(
+                                    ReactNativeRegistrationIntentService.this, event, 0);
+
+                            // Create notification handler
+                            ReactNativeFirebaseMessagingService.createNotificationChannel(
+                                    ReactNativeRegistrationIntentService.this);
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Failed to complete token refresh", e);
+
+                        event.putExtra(
+                                ReactNativeConstants.KEY_INTENT_EVENT_NAME,
+                                ReactNativeConstants.EVENT_AZURE_NOTIFICATION_HUB_REGISTERED_ERROR);
+                        event.putExtra(
+                                ReactNativeConstants.KEY_INTENT_EVENT_TYPE,
+                                ReactNativeConstants.INTENT_EVENT_TYPE_STRING);
+                        event.putExtra(ReactNativeConstants.KEY_INTENT_EVENT_STRING_DATA, e.getMessage());
+                        ReactNativeNotificationsHandler.sendBroadcast(
+                                ReactNativeRegistrationIntentService.this, event, 0);
                     }
-
-                    Log.d(TAG, "New NH Registration Successfully - RegId : " + regID);
-
-                    notificationHubUtil.setRegistrationID(ReactNativeRegistrationIntentService.this, regID);
-                    notificationHubUtil.setFCMToken(ReactNativeRegistrationIntentService.this, token);
-
-                    event.putExtra(
-                            ReactNativeConstants.KEY_INTENT_EVENT_NAME,
-                            ReactNativeConstants.EVENT_AZURE_NOTIFICATION_HUB_REGISTERED);
-                    event.putExtra(
-                            ReactNativeConstants.KEY_INTENT_EVENT_TYPE,
-                            ReactNativeConstants.INTENT_EVENT_TYPE_STRING);
-                    event.putExtra(
-                            ReactNativeConstants.KEY_INTENT_EVENT_STRING_DATA, regID);
-                    ReactNativeNotificationsHandler.sendBroadcast(
-                            ReactNativeRegistrationIntentService.this, event, 0);
-
-                    // Create notification handler
-                    ReactNativeFirebaseMessagingService.createNotificationChannel(
-                            ReactNativeRegistrationIntentService.this);
-                }
+                });
             } catch (Exception e) {
-                Log.e(TAG, "Failed to complete token refresh", e);
-
-                event.putExtra(
-                        ReactNativeConstants.KEY_INTENT_EVENT_NAME,
-                        ReactNativeConstants.EVENT_AZURE_NOTIFICATION_HUB_REGISTERED_ERROR);
-                event.putExtra(
-                        ReactNativeConstants.KEY_INTENT_EVENT_TYPE,
-                        ReactNativeConstants.INTENT_EVENT_TYPE_STRING);
-                event.putExtra(ReactNativeConstants.KEY_INTENT_EVENT_STRING_DATA, e.getMessage());
-                ReactNativeNotificationsHandler.sendBroadcast(
-                        ReactNativeRegistrationIntentService.this, event, 0);
+                e.printStackTrace();
             }
         });
+
+        thread.start();
     }
 }
