@@ -14,10 +14,25 @@
 import {NativeEventEmitter} from 'react-native';
 import {NativeModules} from 'react-native';
 
-const RCTAzureNotificationHubManager = NativeModules.AzureNotificationHubManager;
 const invariant = require('fbjs/lib/invariant');
 
-const PushNotificationEmitter = new NativeEventEmitter(RCTAzureNotificationHubManager);
+const RCTAzureNotificationHubManager =
+    NativeModules.AzureNotificationHubManager ?? NativeModules.RCTAzureNotificationHubManager;
+
+let _emitter = null;
+
+function getEmitter() {
+  invariant(
+      RCTAzureNotificationHubManager != null,
+      'AzureNotificationHubManager native module is not available. ' +
+      'Check that the iOS native module is linked, the Pod is installed, and the module name matches NativeModules.AzureNotificationHubManager.'
+  );
+
+  if (_emitter == null) {
+    _emitter = new NativeEventEmitter(RCTAzureNotificationHubManager);
+  }
+  return _emitter;
+}
 
 const _notifHandlers = new Map();
 
@@ -223,42 +238,42 @@ class AzureNotificationHubIOS {
     );
     var listener;
     if (type === 'notification') {
-      listener =  PushNotificationEmitter.addListener(
+      listener =  getEmitter().addListener(
         DEVICE_NOTIF_EVENT,
         (notifData) => {
           handler(new AzureNotificationHubIOS(notifData));
         }
       );
     } else if (type === 'localNotification') {
-      listener = PushNotificationEmitter.addListener(
+      listener = getEmitter().addListener(
         DEVICE_LOCAL_NOTIF_EVENT,
         (notifData) => {
           handler(new AzureNotificationHubIOS(notifData));
         }
       );
     } else if (type === 'register') {
-      listener = PushNotificationEmitter.addListener(
+      listener = getEmitter().addListener(
         NOTIF_REGISTER_EVENT,
         (registrationInfo) => {
           handler(registrationInfo.deviceToken);
         }
       );
     } else if (type === 'registrationError') {
-      listener = PushNotificationEmitter.addListener(
+      listener = getEmitter().addListener(
         NOTIF_REGISTRATION_ERROR_EVENT,
         (errorInfo) => {
           handler(errorInfo);
         }
       );
     } else if (type === 'registerAzureNotificationHub') {
-      listener = PushNotificationEmitter.addListener(
+      listener = getEmitter().addListener(
         NOTIF_REGISTER_AZURE_HUB_EVENT,
         (registrationInfo) => {
           handler(registrationInfo);
         }
       );
     } else if (type === 'azureNotificationHubRegistrationError') {
-      listener = PushNotificationEmitter.addListener(
+      listener = getEmitter().addListener(
         NOTIF_AZURE_HUB_REGISTRATION_ERROR_EVENT,
         (errorInfo) => {
           handler(errorInfo);
